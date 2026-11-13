@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     API_V1_PREFIX: str = "/api/v1"
 
     ANTHROPIC_API_KEY: str = ""
+    TAVILY_API_KEY: str = ""
     CLAUDE_MODEL: str = "claude-sonnet-4-5"
 
     FRONTEND_ORIGIN: str = "http://localhost:5173"
