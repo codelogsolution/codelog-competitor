@@ -1,0 +1,33 @@
+
+# Environment variables and secrets
+.env
+.env.*
+.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+
+# Node
+node_modules/
+dist/
+build/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+
+# Uploaded and generated data
+data/uploads/*
+data/exports/*
+!data/uploads/.gitkeep
+!data/exports/.gitkeep
+
+# Logs
+*.log
