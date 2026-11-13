@@ -1,4 +1,3 @@
-
 from functools import lru_cache
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -11,12 +10,16 @@ class Settings(BaseSettings):
 
     API_V1_PREFIX: str = "/api/v1"
 
+    # LLM configuration
     ANTHROPIC_API_KEY: str = ""
+    ANTHROPIC_BASE_URL: str = "http://127.0.0.1:31415"
+    CLAUDE_MODEL: str = "nemotron-3.5-lightning"
+
+    # Web research
     TAVILY_API_KEY: str = ""
-    CLAUDE_MODEL: str = "claude-sonnet-4-5"
 
+    # Application configuration
     FRONTEND_ORIGIN: str = "http://localhost:5173"
-
     MAX_UPLOAD_SIZE_MB: int = 10
     UPLOAD_DIR: str = "../data/uploads"
     EXPORT_DIR: str = "../data/exports"
