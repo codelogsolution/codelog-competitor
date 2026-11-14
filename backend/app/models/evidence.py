@@ -1,0 +1,47 @@
+from datetime import datetime, timezone
+
+from sqlalchemy import (
+    DateTime,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+)
+from sqlalchemy.orm import Mapped, mapped_column
+
+from app.database.base import Base
+
+
+class Evidence(Base):
+    __tablename__ = "evidence"
+
+    __table_args__ = (
+        UniqueConstraint(
+            "domain",
+            "source_url",
+            "signal_type",
+            "signal_text",
+            name="uq_evidence_source_signal",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(
+        Integer, primary_key=True, index=True
+    )
+    competitor_name: Mapped[str] = mapped_column(String(255), index=True)
+    domain: Mapped[str] = mapped_column(String(255), index=True)
+    source_type: Mapped[str] = mapped_column(String(100))
+    source_url: Mapped[str] = mapped_column(Text)
+    category: Mapped[str] = mapped_column(String(150))
+    signal_type: Mapped[str] = mapped_column(String(100), index=True)
+    signal_text: Mapped[str] = mapped_column(Text)
+    signal_date: Mapped[str] = mapped_column(String(30))
+    sentiment: Mapped[str] = mapped_column(String(30), default="unknown")
+    frequency: Mapped[int] = mapped_column(Integer, default=0)
+    keyword_gap: Mapped[str] = mapped_column(Text, default="")
+    product_area: Mapped[str] = mapped_column(String(150), default="")
+    status: Mapped[str] = mapped_column(String(30), default="valid")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+    )

@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 64" fill="none">
+<defs><linearGradient id="g" x1="8" y1="5" x2="56" y2="59" gradientUnits="userSpaceOnUse"><stop stop-color="#A99BFF"/><stop offset="1" stop-color="#4D7FE8"/></linearGradient></defs>
+<rect x="2" y="2" width="60" height="60" rx="18" fill="#171B36"/>
+<path d="M15 32c0-9.389 7.611-17 17-17 6.45 0 12.06 3.59 14.95 8.88" stroke="url(#g)" stroke-width="6" stroke-linecap="round"/>
+<path d="M49 32c0 9.389-7.611 17-17 17-6.45 0-12.06-3.59-14.95-8.88" stroke="url(#g)" stroke-width="6" stroke-linecap="round"/>
+<path d="m37 22 10 1-1-10M27 42l-10-1 1 10" stroke="#E9E7FF" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="32" cy="32" r="4" fill="#E9E7FF"/>
+<text x="76" y="34" fill="#F0F2FF" font-family="Inter,Arial,sans-serif" font-size="25" font-weight="800" letter-spacing="5">KOMP</text>
+<text x="77" y="49" fill="#8996B2" font-family="Inter,Arial,sans-serif" font-size="7.5" font-weight="600" letter-spacing="1.65">COMPETITOR INTELLIGENCE</text>
+</svg>

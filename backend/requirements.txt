@@ -17,3 +17,6 @@ openpyxl
 httpx
 pytest
 pytest-asyncio
+
+SQLAlchemy
+langchain-openai

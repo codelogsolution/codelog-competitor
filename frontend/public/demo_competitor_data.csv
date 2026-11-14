@@ -1,0 +1,4 @@
+﻿competitor_name,domain,source_type,source_url,category,signal_type,signal_text,signal_date,sentiment,frequency,keyword_gap,product_area
+Deel (Demo Record),deel.com,g2,https://www.g2.com/products/deel/reviews,eor,review_theme,DEMO DATA ONLY: sample negative customer-support theme used to test KOMP ingestion and scoring. This is not a verified customer review or a claim about Deel.,2026-11-12,negative,30,,eor
+Rippling (Demo Record),rippling.com,capterra,https://www.capterra.com/,eor,review_theme,DEMO DATA ONLY: sample onboarding-friction theme used to test KOMP ingestion and scoring. This is not a verified customer review or a claim about Rippling.,2026-11-11,negative,28,,eor
+Deel (Demo Record),deel.com,website,https://www.deel.com/,eor,product_positioning,DEMO DATA ONLY: placeholder observation showing how a public competitor website URL is retained as evidence for later research.,2026-11-13,neutral,1,,eor

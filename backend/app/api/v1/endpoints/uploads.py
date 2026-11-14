@@ -6,11 +6,7 @@ from app.schemas.upload import UploadResponse
 from app.services.file_service import FileService
 from app.services.validation_service import ValidationService
 
-router = APIRouter(
-    prefix="/uploads",
-    tags=["Uploads"],
-)
-
+router = APIRouter()
 
 @router.post("", response_model=UploadResponse)
 async def upload_competitor_file(

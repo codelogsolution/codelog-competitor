@@ -1,4 +1,6 @@
 
+import asyncio
+
 import httpx
 
 from app.core.config import settings
@@ -185,14 +187,20 @@ class ResearchService:
             skipped_count += len(targets) - max_competitors
 
         targets = targets[:max_competitors]
-        results = []
+        # Search independent competitors concurrently, with a small cap so we
+        # improve latency without overwhelming the search provider/API quota.
+        semaphore = asyncio.Semaphore(3)
 
-        for competitor in targets:
-            result = await cls.search_competitor(
-                competitor,
-                max_results=max_results_per_competitor,
-            )
-            results.append(result)
+        async def research_one(competitor: dict) -> CompetitorResearch:
+            async with semaphore:
+                return await cls.search_competitor(
+                    competitor,
+                    max_results=max_results_per_competitor,
+                )
+
+        results = await asyncio.gather(
+            *(research_one(competitor) for competitor in targets)
+        )
 
         return ResearchResponse(
             success=all(

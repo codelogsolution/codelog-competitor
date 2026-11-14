@@ -1,3 +1,4 @@
+import pytest
 
 from app.services.research_service import ResearchService
 
@@ -84,3 +85,38 @@ def test_research_only_first_five_targets():
 
     assert len(eligible[:5]) == 5
     assert len(eligible[5:]) == 2
+
+@pytest.mark.asyncio
+async def test_research_competitors_runs_searches_concurrently(monkeypatch):
+    import asyncio
+
+    active = 0
+    max_active = 0
+
+    async def fake_search(competitor, max_results=5):
+        nonlocal active, max_active
+        active += 1
+        max_active = max(max_active, active)
+        await asyncio.sleep(0.02)
+        active -= 1
+        from app.schemas.research import CompetitorResearch
+        return CompetitorResearch(
+            competitor_name=competitor["competitor_name"],
+            domain=competitor["domain"],
+            preliminary_score=competitor["preliminary_score"],
+            status="completed",
+            query="test query",
+            sources=[],
+        )
+
+    monkeypatch.setattr(ResearchService, "search_competitor", fake_search)
+    competitors = [
+        competitor(score=90 - i, domain=f"company{i}.com")
+        for i in range(5)
+    ]
+
+    response = await ResearchService.research_competitors(competitors)
+
+    assert response.researched_count == 5
+    assert max_active > 1
+    assert max_active <= 3

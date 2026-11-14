@@ -1,4 +1,13 @@
+import pytest
+
 from app.ai.providers.claude_provider import ClaudeProvider
+from app.core.config import settings
+
+
+pytestmark = pytest.mark.skipif(
+    not settings.ANTHROPIC_API_KEY,
+    reason="ANTHROPIC_API_KEY is not configured",
+)
 
 
 def test_llm_provider_initialization():
@@ -6,10 +15,6 @@ def test_llm_provider_initialization():
     llm = provider.get_chat_model()
 
     assert llm is not None
-
-    print("\nLLM provider initialized successfully.")
-    print("Model:", provider.model)
-    print("Base URL:", provider.base_url)
 
 
 def test_llm_actual_response():
@@ -19,8 +24,6 @@ def test_llm_actual_response():
     response = llm.invoke(
         "Reply with exactly: KOMP LLM connection successful"
     )
-
-    print("\nActual LLM Response:", response.content)
 
     assert response.content
     assert "KOMP" in str(response.content)

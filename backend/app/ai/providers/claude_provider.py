@@ -27,5 +27,7 @@ class ClaudeProvider(BaseLLMProvider):
             base_url=self.base_url,
             api_key=self.api_key,
             temperature=0,
-            max_tokens=1000,
+            max_tokens=3500,
+            timeout=60,
+            max_retries=1,
         )

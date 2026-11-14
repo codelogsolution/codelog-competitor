@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 72" fill="none">
+<defs><linearGradient id="cc" x1="8" y1="8" x2="56" y2="56" gradientUnits="userSpaceOnUse"><stop stop-color="#A78BFA"/><stop offset="1" stop-color="#4F7FE8"/></linearGradient></defs>
+<rect x="2" y="4" width="64" height="64" rx="19" fill="#171B36"/>
+<path d="M34.5 16.5a18 18 0 1 0 0 35M49 16.5a18 18 0 1 0 0 35" stroke="url(#cc)" stroke-width="7" stroke-linecap="round"/>
+<path d="M28 26h-4a8 8 0 1 0 0 16h4M43 26h-4a8 8 0 1 0 0 16h4" stroke="#F1EEFF" stroke-width="3.2" stroke-linecap="round"/>
+<text x="80" y="34" fill="#F2F4FA" font-family="Inter,Arial,sans-serif" font-size="22" font-weight="750">CodeLogSolution</text>
+<text x="81" y="52" fill="#8D9AB0" font-family="Inter,Arial,sans-serif" font-size="10" letter-spacing="1.15">COMPETITOR INTELLIGENCE</text>
+</svg>

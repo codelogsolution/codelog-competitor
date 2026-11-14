@@ -151,8 +151,11 @@ class ScoringService:
 
         for record in records:
             # Invalid rows must never contribute to a score.
-            if cls._text(record.get("status")) == "invalid":
-                continue
+            if (
+            cls._text(record.get("status")) == "invalid"
+            or cls._text(record.get("validation_status")) == "invalid"
+        ):
+             continue
 
             domain = cls._text(record.get("domain"))
             name = str(record.get("competitor_name") or "").strip()
