@@ -1,7 +1,9 @@
-from sqlalchemy import select
+from sqlalchemy import select, func
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.models.evidence import Evidence
+from app.models.run_evidence import RunEvidence
 
 
 class EvidenceRepository:
@@ -10,54 +12,100 @@ class EvidenceRepository:
     def create_many(
         db: Session,
         records: list[dict],
-    ) -> tuple[list[Evidence], int]:
+    ) -> tuple[list[Evidence], int, list[Evidence]]:
 
         inserted = []
+        resolved = []
         duplicates = 0
 
-        for record in records:
-            existing = db.scalar(
-                select(Evidence).where(
-                    Evidence.domain == record["domain"],
-                    Evidence.source_url == record["source_url"],
-                    Evidence.signal_type == record["signal_type"],
-                    Evidence.signal_text == record["signal_text"],
-                )
-            )
-
-            if existing:
-                duplicates += 1
-                continue
-
-            evidence = Evidence(**record)
-            db.add(evidence)
-            inserted.append(evidence)
-
         try:
-            db.commit()
-            for item in inserted:
-                db.refresh(item)
+            for record in records:
+                existing = db.scalar(
+                    select(Evidence).where(
+                        Evidence.domain == record["domain"],
+                        Evidence.source_url == record["source_url"],
+                        Evidence.signal_type == record["signal_type"],
+                        func.lower(Evidence.signal_text)
+                        == record["signal_text"].lower(),
+                    )
+                )
+
+                if existing:
+                    duplicates += 1
+                    resolved.append(existing)
+                    continue
+
+                try:
+                    with db.begin_nested():
+                        evidence = Evidence(**record)
+                        db.add(evidence)
+                        db.flush()
+
+                    inserted.append(evidence)
+                    resolved.append(evidence)
+
+                except IntegrityError:
+                    duplicates += 1
+                    existing = db.scalar(
+                        select(Evidence).where(
+                            Evidence.domain == record["domain"],
+                            Evidence.source_url == record["source_url"],
+                            Evidence.signal_type == record["signal_type"],
+                            func.lower(Evidence.signal_text) == record["signal_text"].lower(),
+                        )
+                    )
+                    if existing:
+                        resolved.append(existing)
+
         except Exception:
             db.rollback()
             raise
 
-        return inserted, duplicates
+        return inserted, duplicates, resolved
 
     @staticmethod
     def list_all(
         db: Session,
         domain: str | None = None,
         limit: int = 100,
+        run_id: str | None = None,
     ) -> list[Evidence]:
 
         query = select(Evidence)
 
+        if run_id:
+            query = query.join(
+                RunEvidence,
+                RunEvidence.evidence_id == Evidence.id,
+            ).where(RunEvidence.run_id == run_id)
+
         if domain:
             query = query.where(Evidence.domain == domain.lower())
 
-        query = query.order_by(Evidence.created_at.desc()).limit(limit)
+        query = query.distinct().order_by(Evidence.created_at.desc()).limit(limit)
 
         return list(db.scalars(query).all())
+
+    @staticmethod
+    def delete_by_id(db: Session, evidence_id: int) -> bool:
+        evidence = db.get(Evidence, evidence_id)
+        if not evidence:
+            return False
+        db.delete(evidence)
+        db.commit()
+        return True
+
+    @staticmethod
+    def delete_by_domain(db: Session, domain: str) -> int:
+        records = db.scalars(
+            select(Evidence).where(Evidence.domain == domain.lower())
+        ).all()
+        count = len(records)
+        for record in records:
+            db.delete(record)
+        if count:
+            db.commit()
+        return count
 
     @staticmethod
     def get_summary(

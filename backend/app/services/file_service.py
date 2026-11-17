@@ -1,4 +1,5 @@
 from pathlib import Path
+import re
 from uuid import uuid4
 
 from app.core.config import settings
@@ -44,3 +45,25 @@ class FileService:
         file_path.write_bytes(content)
 
         return stored_filename
+
+    @staticmethod
+    def read_file(stored_filename: str) -> bytes:
+        if not re.fullmatch(r"[a-f0-9]{32}\.(csv|xlsx)", stored_filename or ""):
+            raise ValueError("Stored source file reference is invalid.")
+        backend_dir = Path(__file__).resolve().parents[2]
+        upload_dir = (backend_dir / settings.UPLOAD_DIR).resolve()
+        file_path = (upload_dir / stored_filename).resolve()
+        if file_path.parent != upload_dir or not file_path.is_file():
+            raise FileNotFoundError("Uploaded source file is no longer available.")
+        return file_path.read_bytes()
+
+    @staticmethod
+    def delete_file(stored_filename: str) -> None:
+        if not re.fullmatch(r"[a-f0-9]{32}\.(csv|xlsx)", stored_filename or ""):
+            raise ValueError("Stored source file reference is invalid.")
+        backend_dir = Path(__file__).resolve().parents[2]
+        upload_dir = (backend_dir / settings.UPLOAD_DIR).resolve()
+        file_path = (upload_dir / stored_filename).resolve()
+        if file_path.parent != upload_dir:
+            raise ValueError("Stored source file path is invalid.")
+        file_path.unlink(missing_ok=True)

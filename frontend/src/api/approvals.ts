@@ -15,6 +15,18 @@ export async function getApprovals(): Promise<ApprovalItem[]> {
 export async function submitApprovalAction(id: number, action: "approve" | "reject" | "request-changes" | "resubmit", comment = "") {
   return apiPost(`/approvals/${id}/${action}`, { comment });
 }
-export async function getAuditLogs(): Promise<AuditRecord[]> {
-  return unwrapList<AuditRecord>(await apiGet<unknown>("/audit/"));
+export interface AuditLogPage {
+  items: AuditRecord[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export async function getAuditLogs(limit = 25, offset = 0): Promise<AuditLogPage> {
+  const response = await apiGet<unknown>("/audit/", { limit, offset });
+  if (response && typeof response === "object" && "items" in response) {
+    return response as AuditLogPage;
+  }
+  const items = unwrapList<AuditRecord>(response);
+  return { items, total: items.length, limit, offset };
 }

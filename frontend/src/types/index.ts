@@ -10,6 +10,9 @@ export interface EvidenceRecord {
   signal_date?: string;
   sentiment?: string;
   frequency?: number;
+  keyword_gap?: string;
+  keyword_volume?: number | null;
+  ranking_gap?: number | null;
   product_area?: string;
   status?: string;
   created_at?: string;

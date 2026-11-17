@@ -1,4 +1,4 @@
-import { apiGet } from "./client";
+import { apiDelete, apiGet } from "./client";
 import type { BattlecardRecord } from "../types";
 export type Battlecard = BattlecardRecord;
 export interface BattlecardContent {
@@ -19,4 +19,8 @@ export async function getBattlecards(): Promise<Battlecard[]> {
 }
 export async function getBattlecard(id: number | string): Promise<Battlecard> {
   return apiGet<Battlecard>(`/battlecards/${id}`);
+}
+
+export async function deleteBattlecard(id: number | string) {
+  return apiDelete(`/battlecards/${id}`);
 }

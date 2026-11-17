@@ -24,6 +24,8 @@ class NormalizationService:
         "review_theme": "review_theme",
         "website_claim": "competitor_claim",
         "competitor_claim": "competitor_claim",
+        "product_positioning": "competitor_claim",
+        "positioning": "competitor_claim",
         "keyword_gap": "keyword_gap",
         "feature_mention": "feature_mention",
         "pricing": "pricing",

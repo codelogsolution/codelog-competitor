@@ -1,36 +1,54 @@
+
 import { useCallback, useEffect, useState } from "react";
 
-export function useApi<T>(loader: () => Promise<T>, dependencies: unknown[] = []) {
+export function useApi<T>(loader: () => Promise<T>) {
   const [data, setData] = useState<T | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
 
   const refresh = useCallback(async () => {
-    setLoading(true);
+    setRefreshing(true);
     setError("");
+
     try {
-      setData(await loader());
+      const result = await loader();
+      setData(result);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unable to load data");
+      setError(
+        err instanceof Error ? err.message : "Unable to load data"
+      );
     } finally {
-      setLoading(false);
+      setRefreshing(false);
     }
   }, [loader]);
 
-  // Auto-refresh when the loader or its dependencies change.
-  // State updates are deferred past the first tick so they are not applied
-  // synchronously inside this effect body.
   useEffect(() => {
     let active = true;
-    void (async () => {
-      await Promise.resolve();
-      if (!active) return;
-      await refresh();
-    })();
+
+    loader()
+      .then((result) => {
+        if (active) {
+          setData(result);
+        }
+      })
+      .catch((err: unknown) => {
+        if (active) {
+          setError(
+            err instanceof Error ? err.message : "Unable to load data"
+          );
+        }
+      })
+      .finally(() => {
+        if (active) {
+          setLoading(false);
+        }
+      });
+
     return () => {
       active = false;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loader, ...dependencies]);
-  return { data, loading, error, refresh };
+  }, [loader]);
+
+  return { data, loading, refreshing, error, refresh };
 }

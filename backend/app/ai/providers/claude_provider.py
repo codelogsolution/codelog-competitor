@@ -1,33 +1,68 @@
-from langchain_openai import ChatOpenAI
-from langchain_core.language_models.chat_models import BaseChatModel
+from typing import TYPE_CHECKING, Any
 
-from app.ai.providers.base import BaseLLMProvider
+if TYPE_CHECKING:
+    from langchain_core.language_models.chat_models import BaseChatModel
+
 from app.core.config import settings
 
 
-class ClaudeProvider(BaseLLMProvider):
-    """
-    LLM provider using FreeLLMAPI's OpenAI-compatible endpoint.
+class LLMProvider:
+    """Create the configured chat model; provider choice is environment-driven."""
 
-    Despite the legacy class and filename, this currently connects
-    to NVIDIA Nemotron through FreeLLMAPI.
-    """
+    def get_chat_model(self) -> Any:
+        provider = settings.LLM_PROVIDER.strip().lower()
 
-    def __init__(self):
-        self.model = settings.CLAUDE_MODEL
-        self.base_url = f"{settings.ANTHROPIC_BASE_URL.rstrip('/')}/v1"
-        self.api_key = settings.ANTHROPIC_API_KEY
+        if provider == "anthropic":
+            if not settings.ANTHROPIC_API_KEY:
+                raise ValueError("ANTHROPIC_API_KEY is not configured.")
+            from langchain_anthropic import ChatAnthropic
 
-    def get_chat_model(self) -> BaseChatModel:
-        if not self.api_key:
-            raise ValueError("FreeLLMAPI API key is not configured.")
+            return ChatAnthropic(
+                model=settings.LLM_MODEL,
+                api_key=settings.ANTHROPIC_API_KEY,
+                base_url=settings.ANTHROPIC_BASE_URL or None,
+                temperature=settings.LLM_TEMPERATURE,
+                max_tokens=settings.LLM_MAX_TOKENS,
+                timeout=60,
+                max_retries=1,
+            )
 
-        return ChatOpenAI(
-            model=self.model,
-            base_url=self.base_url,
-            api_key=self.api_key,
-            temperature=0,
-            max_tokens=3500,
-            timeout=60,
-            max_retries=1,
+        if provider == "openai":
+            if not settings.OPENAI_API_KEY:
+                raise ValueError("OPENAI_API_KEY is not configured.")
+            from langchain_openai import ChatOpenAI
+
+            kwargs = {
+                "model": settings.LLM_MODEL,
+                "api_key": settings.OPENAI_API_KEY,
+                "temperature": settings.LLM_TEMPERATURE,
+                "max_tokens": settings.LLM_MAX_TOKENS,
+                "timeout": 60,
+                "max_retries": 1,
+            }
+            if settings.OPENAI_BASE_URL:
+                kwargs["base_url"] = settings.OPENAI_BASE_URL
+            return ChatOpenAI(**kwargs)
+
+        if provider == "vertex_ai":
+            if not settings.GOOGLE_CLOUD_PROJECT:
+                raise ValueError("GOOGLE_CLOUD_PROJECT is not configured.")
+            from langchain_google_vertexai import ChatVertexAI
+
+            return ChatVertexAI(
+                model_name=settings.LLM_MODEL,
+                project=settings.GOOGLE_CLOUD_PROJECT,
+                location=settings.GOOGLE_CLOUD_LOCATION,
+                temperature=settings.LLM_TEMPERATURE,
+                max_output_tokens=settings.LLM_MAX_TOKENS,
+            )
+
+        raise ValueError(
+            "Unsupported LLM_PROVIDER. Use anthropic, openai, or vertex_ai."
         )
+
+
+# Backward-compatible import name used by the existing BattlecardService/tests.
+class ClaudeProvider(LLMProvider):
+    """Legacy alias; provider is selected by LLM_PROVIDER, not this class name."""
+    pass

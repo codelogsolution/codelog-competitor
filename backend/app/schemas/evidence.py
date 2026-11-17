@@ -1,13 +1,14 @@
 from datetime import datetime
+from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, HttpUrl
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class EvidenceCreate(BaseModel):
     competitor_name: str = Field(min_length=1, max_length=255)
     domain: str = Field(min_length=1, max_length=255)
     source_type: str = Field(min_length=1, max_length=100)
-    source_url: HttpUrl
+    source_url: str = ""
     category: str = Field(min_length=1, max_length=150)
     signal_type: str = Field(min_length=1, max_length=100)
     signal_text: str = Field(min_length=1)
@@ -15,6 +16,8 @@ class EvidenceCreate(BaseModel):
     sentiment: str = "unknown"
     frequency: int = Field(default=0, ge=0)
     keyword_gap: str = ""
+    keyword_volume: float | None = Field(default=None, ge=0)
+    ranking_gap: float | None = Field(default=None, ge=0)
     product_area: str = ""
     status: str = "valid"
 
@@ -45,3 +48,10 @@ class EvidenceSummary(BaseModel):
     evidence_by_type: dict[str, int]
     evidence_by_category: dict[str, int]
     sources: list[str]
+
+
+class EvidenceResolutionRequest(BaseModel):
+    decision: Literal["confirm_valid", "mark_invalid"]
+    actor: str = Field(default="workspace_reviewer", min_length=1, max_length=255)
+    comment: str = Field(default="", max_length=2000)
+    source_url: str | None = Field(default=None, max_length=2000)

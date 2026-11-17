@@ -1,3 +1,5 @@
+import logging
+
 
 from fastapi import APIRouter, HTTPException
 
@@ -5,6 +7,7 @@ from app.schemas.research import ResearchRequest, ResearchResponse
 from app.services.research_service import ResearchService
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 @router.post("/run", response_model=ResearchResponse)
@@ -16,7 +19,8 @@ async def run_competitor_research(payload: ResearchRequest):
             max_results_per_competitor=payload.max_results_per_competitor,
         )
     except Exception as exc:
+        logger.exception("Competitor research endpoint failed")
         raise HTTPException(
             status_code=500,
-            detail=f"Competitor research failed: {str(exc)}",
+            detail="Competitor research failed. Check application logs for details.",
         ) from exc

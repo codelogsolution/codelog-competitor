@@ -8,6 +8,8 @@ from app.ai.providers.claude_provider import ClaudeProvider
 from app.ai.tools.evidence_tools import get_evidence_context
 from app.models.evidence import Evidence
 from app.repositories.battlecard_repository import BattlecardRepository
+from app.services.scoring_service import ScoringService
+from app.services.audit_service import AuditService
 from app.schemas.battlecard import BattlecardContent
 
 
@@ -88,16 +90,95 @@ class BattlecardService:
                     "LLM returned incomplete or invalid battlecard JSON after one retry."
                 ) from exc
 
+    @staticmethod
+    def _normalized_domain(domain: str) -> str:
+        return str(domain or "").strip().lower().removeprefix("www.").rstrip(".")
+
+    @staticmethod
+    def _record_dict(item: Evidence) -> dict:
+        return {
+            "competitor_name": item.competitor_name,
+            "domain": item.domain,
+            "source_type": item.source_type,
+            "signal_type": item.signal_type,
+            "category": item.category,
+            "product_area": item.product_area,
+            "sentiment": item.sentiment,
+            "frequency": item.frequency,
+            "keyword_volume": item.keyword_volume,
+            "ranking_gap": item.ranking_gap,
+            "signal_text": item.signal_text,
+            "source_url": item.source_url,
+            "signal_date": item.signal_date,
+            "status": item.status,
+        }
+
+    @classmethod
+    def _eligible_evidence(cls, records: list[Evidence]) -> list[Evidence]:
+        """Only validated, source-backed records may enter a generated draft."""
+        return [
+            item for item in records
+            if str(item.status or "").strip().lower() == "valid"
+            and bool(str(item.signal_text or "").strip())
+            and str(item.source_url or "").strip().lower().startswith(("https://", "http://"))
+        ]
+
+    @classmethod
+    def _assert_battlecard_eligibility(
+        cls,
+        competitor_name: str,
+        domain: str,
+        records: list[Evidence],
+    ) -> list[Evidence]:
+        # Public research may support a draft, but it must not change the
+        # deterministic score that qualified the competitor for research.
+        scoring_records = [
+            cls._record_dict(item)
+            for item in records
+            if str(item.signal_type or "").strip().lower() != "public_research"
+        ]
+        score_response = ScoringService.score_competitors(scoring_records)
+        normalized_domain = cls._normalized_domain(domain)
+        score = next(
+            (
+                item for item in score_response.results
+                if cls._normalized_domain(item.domain) == normalized_domain
+            ),
+            None,
+        )
+        if score is None or score.priority != "high" or score.preliminary_score < 70:
+            raise ValueError(
+                "Battlecards can only be generated for high-priority competitors "
+                "with a score of at least 70 from valid evidence."
+            )
+
+        usable = cls._eligible_evidence(records)
+        if not usable:
+            raise ValueError(
+                "No usable, source-backed valid evidence is available for this competitor."
+            )
+        return usable
+
     @classmethod
     def generate(cls, db: Session, competitor_name: str, domain: str):
+        normalized_domain = cls._normalized_domain(domain)
+        if not normalized_domain:
+            raise ValueError("A valid competitor domain is required.")
+
         records = (
             db.query(Evidence)
-            .filter(Evidence.domain == domain.lower())
+            .filter(Evidence.domain == normalized_domain)
             .all()
         )
 
         if not records:
             raise ValueError("No evidence available for this competitor.")
+
+        eligible_records = cls._assert_battlecard_eligibility(
+            competitor_name,
+            normalized_domain,
+            records,
+        )
 
         evidence = [
             {
@@ -110,24 +191,36 @@ class BattlecardService:
                 "source_url": item.source_url,
                 "signal_date": item.signal_date,
             }
-            for item in records
+            for item in eligible_records
         ]
 
         context = get_evidence_context(evidence)
         llm = ClaudeProvider().get_chat_model()
-        content = cls._generate_content(llm, competitor_name, domain, context)
-        urls = sorted({item.source_url for item in records})
+        content = cls._generate_content(llm, competitor_name, normalized_domain, context)
+        urls = sorted({item.source_url for item in eligible_records})
 
         saved = BattlecardRepository.create(
             db,
             {
                 "competitor_name": competitor_name,
-                "domain": domain.lower(),
+                "domain": normalized_domain,
                 "status": "pending_review",
                 "content": content.model_dump_json(),
                 "evidence_urls": json.dumps(urls),
             },
         )
+        AuditService.record(
+            db=db,
+            entity_id=saved.id,
+            entity_type="battlecard",
+            action="generated_by_ai",
+            previous_status="",
+            new_status="pending_review",
+            actor="KOMP AI",
+            comment=f"Draft generated from {len(urls)} validated evidence source(s); reviewer approval required.",
+        )
+        db.commit()
+        db.refresh(saved)
 
         return {
             "id": saved.id,

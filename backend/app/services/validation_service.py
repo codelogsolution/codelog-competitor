@@ -2,9 +2,12 @@
 from datetime import date, datetime
 from io import BytesIO
 from pathlib import Path
+from zipfile import BadZipFile, ZipFile
 
 import pandas as pd
 
+from app.core.config import settings
+from app.core.security import is_safe_http_url
 from app.services.normalization_service import NormalizationService
 
 
@@ -14,15 +17,9 @@ class ValidationService:
         "competitor_name",
         "domain",
         "source_type",
-        "source_url",
         "category",
         "signal_type",
         "signal_text",
-        "signal_date",
-        "sentiment",
-        "frequency",
-        "keyword_gap",
-        "product_area",
     }
 
     REQUIRED_ROW_FIELDS = {
@@ -53,6 +50,19 @@ class ValidationService:
     }
 
     @staticmethod
+    def validate_records(records: list[dict]) -> dict:
+        """Revalidate API-submitted records instead of trusting client status flags."""
+        if not records:
+            raise ValueError("At least one evidence record is required.")
+
+        frame = pd.DataFrame(records)
+        content = frame.to_csv(index=False).encode("utf-8")
+        return ValidationService.validate_file(
+            filename="api-records.csv",
+            content=content,
+        )
+
+    @staticmethod
     def validate_file(filename: str, content: bytes) -> dict:
 
         extension = Path(filename).suffix.lower()
@@ -64,6 +74,18 @@ class ValidationService:
                 df = pd.read_csv(file_buffer)
 
             elif extension == ".xlsx":
+                try:
+                    with ZipFile(BytesIO(content)) as workbook:
+                        members = workbook.infolist()
+                        expanded_bytes = sum(item.file_size for item in members)
+                        max_expanded = settings.MAX_XLSX_UNCOMPRESSED_MB * 1024 * 1024
+                        if len(members) > 2000 or expanded_bytes > max_expanded:
+                            raise ValueError(
+                                "XLSX file expands beyond the allowed processing limit."
+                            )
+                except BadZipFile as exc:
+                    raise ValueError("The XLSX file is not a valid workbook.") from exc
+
                 df = pd.read_excel(
                     file_buffer,
                     engine="openpyxl"
@@ -81,6 +103,11 @@ class ValidationService:
             raise ValueError(
                 f"Unable to read uploaded file: {str(exc)}"
             ) from exc
+
+        if len(df.index) > settings.MAX_UPLOAD_ROWS:
+            raise ValueError(
+                f"File contains more than the allowed {settings.MAX_UPLOAD_ROWS} rows."
+            )
 
         # Normalize column names
         df.columns = [
@@ -136,18 +163,10 @@ class ValidationService:
                         f"{field} is required"
                     )
 
-            # 2. Conditional keyword validation
+            # 2. Signal type validation
             signal_type = (
                 record.get("signal_type") or ""
             ).lower()
-
-            if (
-                signal_type == "keyword_gap"
-                and not record.get("keyword_gap")
-            ):
-                row_errors.append(
-                    "keyword_gap is required for keyword_gap signals"
-                )
 
             # 3. Source type validation
             source_type = record.get("source_type")
@@ -177,9 +196,9 @@ class ValidationService:
                     "Source URL missing; manual evidence review required"
                 )
 
-            elif not source_url.startswith(("http://", "https://")):
+            elif not is_safe_http_url(source_url):
                 row_warnings.append(
-                    "Source URL format should be reviewed"
+                    "Source URL must be an absolute HTTP/HTTPS URL; manual review required"
                 )
 
             # 6. Date validation
@@ -191,23 +210,26 @@ class ValidationService:
                 )
 
             else:
-                parsed_date = datetime.strptime(
-                    signal_date,
-                    "%Y-%m-%d"
-                ).date()
-
-                if parsed_date > today:
-                    row_warnings.append(
-                        "Signal date is in the future"
-                    )
+                try:
+                    parsed_date = datetime.strptime(
+                        signal_date,
+                        "%Y-%m-%d"
+                    ).date()
+                except (TypeError, ValueError):
+                    row_warnings.append("Signal date missing or invalid")
                 else:
-                    age_days = (today - parsed_date).days
-                    record["signal_age_days"] = age_days
-
-                    if age_days > 180:
+                    if parsed_date > today:
                         row_warnings.append(
-                            "Signal is older than 180 days; review confidence"
+                            "Signal date is in the future"
                         )
+                    else:
+                        age_days = (today - parsed_date).days
+                        record["signal_age_days"] = age_days
+
+                        if age_days > 180:
+                            row_warnings.append(
+                                "Signal is older than 180 days; review confidence"
+                            )
 
             # 7. Sentiment validation
             sentiment = (
@@ -258,16 +280,18 @@ class ValidationService:
 
             # 10. Duplicate evidence detection
             domain = record.get("domain")
+            source_url = record.get("source_url")
+            signal_text = record.get("signal_text")
 
             evidence_key = (
                 domain,
-                source_type,
+                source_url,
                 signal_type,
-                (record.get("signal_text") or "").lower(),
-                record.get("signal_date"),
+                " ".join(signal_text.split()).casefold()
+                if signal_text else None,
             )
 
-            if domain:
+            if all(evidence_key):
 
                 if evidence_key in seen_evidence:
                     row_warnings.append(

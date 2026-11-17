@@ -3,7 +3,8 @@ from langgraph.graph import END, START, StateGraph
 from app.agents.state import CompetitorAgentState
 from app.workflows.nodes import (
     scoring_node,
-    evidence_node,
+    uploaded_evidence_node,
+    research_evidence_node,
     research_node,
     battlecard_node,
     route_after_scoring,
@@ -15,9 +16,9 @@ def build_competitor_workflow():
     graph = StateGraph(CompetitorAgentState)
 
     graph.add_node("scoring", scoring_node)
-    graph.add_node("uploaded_evidence", evidence_node)
+    graph.add_node("uploaded_evidence", uploaded_evidence_node)
     graph.add_node("research", research_node)
-    graph.add_node("research_evidence", evidence_node)
+    graph.add_node("research_evidence", research_evidence_node)
     graph.add_node("battlecard", battlecard_node)
     graph.add_node("finish", finish_node)
 

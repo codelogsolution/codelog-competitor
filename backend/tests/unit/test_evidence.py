@@ -93,3 +93,142 @@ def test_evidence_summary():
         assert len(summary.sources) == 1
     finally:
         db.close()
+
+def test_case_insensitive_duplicate_across_separate_ingestions():
+    db = create_test_db()
+
+    try:
+        first_record = sample_evidence()
+        second_record = sample_evidence().model_copy(
+            update={
+                "signal_text": "competitor updated its pricing plans."
+            }
+        )
+
+        first_result = EvidenceService.ingest(db, [first_record])
+        second_result = EvidenceService.ingest(db, [second_record])
+
+        assert first_result.inserted_count == 1
+        assert second_result.inserted_count == 0
+        assert second_result.duplicate_count == 1
+        assert db.query(Evidence).count() == 1
+
+    finally:
+        db.close()
+
+
+def test_warning_evidence_without_source_url_is_retained_for_review():
+    db = create_test_db()
+    try:
+        record = sample_evidence().model_copy(
+            update={"source_url": "", "status": "warning"}
+        )
+        result = EvidenceService.ingest(db, [record])
+        saved = db.query(Evidence).one()
+
+        assert result.inserted_count == 1
+        assert saved.status == "warning"
+        assert saved.source_url == ""
+    finally:
+        db.close()
+
+
+def test_valid_evidence_without_source_url_is_rejected():
+    import pytest
+
+    db = create_test_db()
+    try:
+        record = sample_evidence().model_copy(update={"source_url": ""})
+        with pytest.raises(ValueError, match="valid HTTP/HTTPS"):
+            EvidenceService.ingest(db, [record])
+    finally:
+        db.close()
+
+
+
+def test_warning_evidence_requires_explicit_review_and_records_audit():
+    from app.models.audit_log import AuditLog
+
+    db = create_test_db()
+    try:
+        record = sample_evidence().model_copy(update={"status": "warning"})
+        EvidenceService.ingest(db, [record])
+        saved = db.query(Evidence).one()
+
+        resolved = EvidenceService.resolve_warning(
+            db,
+            saved.id,
+            "confirm_valid",
+            "reviewer@example.test",
+            "Source checked by reviewer",
+        )
+
+        audit = db.query(AuditLog).one()
+        assert resolved.status == "valid"
+        assert audit.entity_type == "evidence"
+        assert audit.entity_id == saved.id
+        assert audit.previous_status == "warning"
+        assert audit.new_status == "valid"
+        assert audit.actor == "reviewer@example.test"
+        assert audit.comment == "Source checked by reviewer"
+    finally:
+        db.close()
+
+
+def test_warning_without_source_url_cannot_be_confirmed_valid():
+    import pytest
+
+    db = create_test_db()
+    try:
+        record = sample_evidence().model_copy(
+            update={"source_url": "", "status": "warning"}
+        )
+        EvidenceService.ingest(db, [record])
+        saved = db.query(Evidence).one()
+
+        with pytest.raises(ValueError, match="valid HTTP/HTTPS"):
+            EvidenceService.resolve_warning(
+                db, saved.id, "confirm_valid", "reviewer"
+            )
+        assert saved.status == "warning"
+    finally:
+        db.close()
+
+
+def test_warning_can_be_explicitly_marked_invalid():
+    db = create_test_db()
+    try:
+        record = sample_evidence().model_copy(update={"status": "warning"})
+        EvidenceService.ingest(db, [record])
+        saved = db.query(Evidence).one()
+
+        resolved = EvidenceService.resolve_warning(
+            db, saved.id, "mark_invalid", "reviewer"
+        )
+        assert resolved.status == "invalid"
+    finally:
+        db.close()
+
+
+
+def test_warning_can_be_confirmed_after_reviewer_adds_source_url():
+    db = create_test_db()
+    try:
+        record = sample_evidence().model_copy(
+            update={"source_url": "", "status": "warning"}
+        )
+        EvidenceService.ingest(db, [record])
+        saved = db.query(Evidence).one()
+
+        resolved = EvidenceService.resolve_warning(
+            db,
+            saved.id,
+            "confirm_valid",
+            "reviewer",
+            "Verified source",
+            "https://competitor-a.com/reviews",
+        )
+        assert resolved.status == "valid"
+        assert resolved.source_url == "https://competitor-a.com/reviews"
+    finally:
+        db.close()

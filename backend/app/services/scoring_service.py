@@ -114,13 +114,30 @@ class ScoringService:
 
     @classmethod
     def _product_overlap(cls, records: list[dict]) -> int:
+        eligible_areas = []
+
         for record in records:
+            signal_type = cls._text(record.get("signal_type"))
+
+            if signal_type == "public_research":
+                continue
+
             area = cls._text(record.get("product_area"))
             category = cls._text(record.get("category"))
-            combined = f"{area} {category}"
+            combined = f"{area} {category}".strip()
 
-            if any(target in combined for target in TARGET_AREAS):
-                return 25
+            if combined:
+                eligible_areas.append(combined)
+
+        if not eligible_areas:
+            return 0
+
+        if any(
+            target in area
+            for area in eligible_areas
+            for target in TARGET_AREAS
+        ):
+            return 25
 
         return 10
 
@@ -151,11 +168,11 @@ class ScoringService:
 
         for record in records:
             # Invalid rows must never contribute to a score.
-            if (
-            cls._text(record.get("status")) == "invalid"
-            or cls._text(record.get("validation_status")) == "invalid"
-        ):
-             continue
+            validation_status = cls._text(
+                record.get("validation_status") or record.get("status") or "valid"
+            )
+            if validation_status != "valid":
+                continue
 
             domain = cls._text(record.get("domain"))
             name = str(record.get("competitor_name") or "").strip()

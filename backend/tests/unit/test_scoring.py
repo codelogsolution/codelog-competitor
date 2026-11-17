@@ -95,3 +95,42 @@ def test_multiple_review_rows_are_not_added():
     response = ScoringService.score_competitors(records)
 
     assert response.results[0].breakdown.review_pain == 30
+
+
+def test_warning_records_are_excluded_from_scoring():
+    records = [make_record(validation_status="warning")]
+
+    response = ScoringService.score_competitors(records)
+
+    assert response.total_competitors == 0
+
+
+def test_product_overlap_for_other_product_area():
+    records = [
+        make_record(
+            product_area="Expense Management",
+            category="Expense Management",
+        )
+    ]
+    assert ScoringService._product_overlap(records) == 10
+
+
+def test_product_overlap_without_product_evidence():
+    records = [
+        make_record(
+            product_area="",
+            category="",
+        )
+    ]
+    assert ScoringService._product_overlap(records) == 0
+
+
+def test_generic_review_without_product_area_gets_zero_overlap():
+    records = [
+        make_record(
+            signal_type="review_theme",
+            product_area="",
+            category="",
+        )
+    ]
+    assert ScoringService._product_overlap(records) == 0

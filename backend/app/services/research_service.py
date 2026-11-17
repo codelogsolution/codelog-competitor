@@ -3,6 +3,8 @@ import asyncio
 
 import httpx
 
+from app.core.security import is_safe_http_url
+
 from app.core.config import settings
 from app.schemas.research import (
     CompetitorResearch,
@@ -62,7 +64,7 @@ class ResearchService:
 
         for item in data.get("results", [])[:max_results]:
             url = item.get("url")
-            if not url:
+            if not is_safe_http_url(url):
                 continue
 
             sources.append(

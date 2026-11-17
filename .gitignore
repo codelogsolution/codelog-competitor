@@ -31,3 +31,13 @@ data/exports/*
 
 # Logs
 *.log
+
+
+# Backend local database and generated data
+backend/data/*.db
+backend/data/*.sqlite
+backend/data/*.sqlite3
+backend/data/uploads/*
+backend/data/exports/*
+!backend/data/uploads/.gitkeep
+!backend/data/exports/.gitkeep

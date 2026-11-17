@@ -1,43 +1,5 @@
-from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy.pool import StaticPool
-
-from app.database.base import Base
-from app.database.session import get_db
-from app.main import app
-
-
-engine = create_engine(
-    "sqlite://",
-    connect_args={"check_same_thread": False},
-    poolclass=StaticPool,
-)
-
-TestingSessionLocal = sessionmaker(
-    bind=engine,
-    autoflush=False,
-    autocommit=False,
-)
-
-Base.metadata.create_all(bind=engine)
-
-
-def override_get_db():
-    db = TestingSessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
-
-app.dependency_overrides[get_db] = override_get_db
-
-client = TestClient(app)
-
-
-def test_ingest_evidence_api():
-    payload = {
+def sample_payload():
+    return {
         "records": [
             {
                 "competitor_name": "Competitor A",
@@ -56,30 +18,44 @@ def test_ingest_evidence_api():
         ]
     }
 
-    response = client.post("/api/v1/evidence/ingest", json=payload)
 
+def test_ingest_evidence_api(client):
+    response = client.post("/api/v1/evidence/ingest", json=sample_payload())
     assert response.status_code == 200
-
     data = response.json()
-
     assert data["success"] is True
     assert data["inserted_count"] == 1
 
 
-def test_list_evidence_api():
+def test_list_evidence_api(client):
+    ingest = client.post("/api/v1/evidence/ingest", json=sample_payload())
+    assert ingest.status_code == 200
+
     response = client.get(
         "/api/v1/evidence/",
         params={"domain": "competitor-a.com"},
     )
+    assert response.status_code == 200
+    assert len(response.json()) == 1
+
+
+def test_evidence_summary_api(client):
+    ingest = client.post("/api/v1/evidence/ingest", json=sample_payload())
+    assert ingest.status_code == 200
+
+    response = client.get("/api/v1/evidence/summary/competitor-a.com")
+    assert response.status_code == 200
+    assert response.json()["total_evidence"] == 1
+
+
+
+def test_warning_evidence_remains_warning_when_ingested(client):
+    payload = sample_payload()
+    payload["records"][0]["source_url"] = ""
+
+    response = client.post("/api/v1/evidence/ingest", json=payload)
 
     assert response.status_code == 200
-    assert len(response.json()) >= 1
-
-
-def test_evidence_summary_api():
-    response = client.get(
-        "/api/v1/evidence/summary/competitor-a.com"
-    )
-
-    assert response.status_code == 200
-    assert response.json()["total_evidence"] >= 1
+    result = response.json()["results"][0]
+    assert result["status"] == "warning"
+    assert result["source_url"] == ""

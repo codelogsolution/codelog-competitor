@@ -31,6 +31,15 @@ class BattlecardRepository:
         return list(db.scalars(query).all())
 
     @staticmethod
+    def delete_by_id(db: Session, battlecard_id: int) -> bool:
+        item = db.get(Battlecard, battlecard_id)
+        if not item:
+            return False
+        db.delete(item)
+        db.commit()
+        return True
+
+    @staticmethod
     def update_status(
         db: Session,
         item: Battlecard,

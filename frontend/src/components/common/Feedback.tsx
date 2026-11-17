@@ -6,8 +6,8 @@ export function Loading({ text = "Loading..." }: { text?: string }) {
 export function ErrorMessage({ text }: { text?: string }) {
   return text ? <div className="alert" role="alert"><AlertCircle size={16}/><span>{text}</span></div> : null;
 }
-export function EmptyState({ title = "Record not found", text = "No records have been added yet." }: { title?: string; text?: string }) {
-  return <div className="empty-state"><Inbox size={25}/><b>{title}</b><p>{text}</p></div>;
+export function EmptyState({ title = "No records yet", text = "No records have been added yet.", children }: { title?: string; text?: string; children?: React.ReactNode }) {
+  return <div className="empty-state"><Inbox size={25}/><b>{title}</b><p>{text}</p>{children}</div>;
 }
 export function StatusBadge({ value }: { value?: string }) {
   const label = (value || "unknown").replaceAll("_", " ");

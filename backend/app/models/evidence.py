@@ -2,10 +2,13 @@ from datetime import datetime, timezone
 
 from sqlalchemy import (
     DateTime,
+    Float,
     Integer,
     String,
     Text,
     UniqueConstraint,
+    Index,
+    func,
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -39,9 +42,21 @@ class Evidence(Base):
     sentiment: Mapped[str] = mapped_column(String(30), default="unknown")
     frequency: Mapped[int] = mapped_column(Integer, default=0)
     keyword_gap: Mapped[str] = mapped_column(Text, default="")
+    keyword_volume: Mapped[float | None] = mapped_column(Float, nullable=True)
+    ranking_gap: Mapped[float | None] = mapped_column(Float, nullable=True)
     product_area: Mapped[str] = mapped_column(String(150), default="")
     status: Mapped[str] = mapped_column(String(30), default="valid")
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),
     )
+
+
+Index(
+    "uq_evidence_source_signal_ci",
+    Evidence.domain,
+    Evidence.source_url,
+    Evidence.signal_type,
+    func.lower(Evidence.signal_text),
+    unique=True,
+)
