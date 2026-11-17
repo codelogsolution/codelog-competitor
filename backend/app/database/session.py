@@ -2,8 +2,9 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from app.core.config import settings
+from app.database.url import normalize_database_url
 
-DATABASE_URL = settings.DATABASE_URL.strip()
+DATABASE_URL = normalize_database_url(settings.DATABASE_URL.strip())
 if not DATABASE_URL:
     raise RuntimeError(
         "DATABASE_URL is required. Configure a PostgreSQL connection string; "
@@ -12,8 +13,6 @@ if not DATABASE_URL:
 if settings.APP_ENV == "testing" and DATABASE_URL.startswith("sqlite"):
     # In-memory SQLite is reserved for isolated automated tests.
     pass
-elif DATABASE_URL.startswith("postgresql://"):
-    DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+psycopg://", 1)
 elif not DATABASE_URL.startswith("postgresql+psycopg://"):
     raise RuntimeError("DATABASE_URL must use PostgreSQL with the psycopg driver.")
 

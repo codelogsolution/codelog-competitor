@@ -4,6 +4,7 @@ from sqlalchemy import engine_from_config, pool
 
 from app.core.config import settings
 from app.database.base import Base
+from app.database.url import normalize_database_url
 from app.models import agent_run, audit_log, battlecard, evidence, run_evidence, source_import  # noqa: F401
 
 config = context.config
@@ -14,13 +15,11 @@ target_metadata = Base.metadata
 
 
 def get_url() -> str:
-    configured_url = settings.DATABASE_URL.strip()
+    configured_url = normalize_database_url(settings.DATABASE_URL.strip())
     if not configured_url:
         raise RuntimeError("DATABASE_URL is required for PostgreSQL migrations.")
     if settings.APP_ENV == "testing" and configured_url.startswith("sqlite"):
         return configured_url
-    if configured_url.startswith("postgresql://"):
-        configured_url = configured_url.replace("postgresql://", "postgresql+psycopg://", 1)
     if not configured_url.startswith("postgresql+psycopg://"):
         raise RuntimeError("DATABASE_URL must use PostgreSQL with psycopg.")
     return configured_url
