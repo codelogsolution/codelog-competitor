@@ -169,7 +169,7 @@ Render is used below as an example Docker host because it supports Docker servic
 
 The current app has **no login or API authentication**. CORS only controls which browser origins can read responses; it does not stop direct API requests. Do not put sensitive company data into this deployment or expose its API publicly until an authentication/access-control layer protects **both** the frontend and API. Vercel Deployment Protection can restrict the Vercel site, but it does not automatically protect a separate Docker API host. Use a supported identity gateway in front of both, or add application authentication and authorization before public launch. Vercel documents [Deployment Protection](https://vercel.com/docs/deployment-protection).
 
-The app currently stores uploaded source files on local disk. In production, mount durable storage at `/app/data/uploads`. A single attached disk is suitable for one API instance; it is not shared storage for multiple replicas. If you need horizontal scaling, move uploads to private object storage and update the file service before scaling out.
+Local development stores uploaded source files in `UPLOAD_DIR`. The Vercel Production backend uses the connected private Blob store instead, so uploads persist independently of serverless instances and are not directly readable from public Blob URLs. Keep `BLOB_READ_WRITE_TOKEN` server-side; never expose it through a `VITE_*` variable or frontend code. The current Vercel Hobby allowance includes 1 GB of Blob storage, 10,000 simple operations, 2,000 advanced operations, and 10 GB of Blob transfer per month; check [Vercel Blob pricing](https://vercel.com/docs/pricing#blob) for current limits and regional rates.
 
 ### 1. Prepare and push the repository safely
 

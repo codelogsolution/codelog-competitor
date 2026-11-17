@@ -6,6 +6,7 @@ from uuid import uuid4
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from sqlalchemy import select
 from sqlalchemy.orm import Session
+from starlette.concurrency import run_in_threadpool
 
 from app.core.config import settings
 from app.database.session import get_db
@@ -54,9 +55,10 @@ async def upload_competitor_file(
         )
 
         # 4. Save uploaded file
-        stored_filename = FileService.save_file(
-            filename=file.filename,
-            content=content,
+        stored_filename = await run_in_threadpool(
+            FileService.save_file,
+            file.filename,
+            content,
         )
 
         import_id = str(uuid4())
@@ -74,8 +76,7 @@ async def upload_competitor_file(
                 "stage_progress": json.dumps({"upload": "completed", "validation": "completed"}),
             })
         except Exception:
-            upload_dir = (Path(__file__).resolve().parents[4] / settings.UPLOAD_DIR).resolve()
-            (upload_dir / stored_filename).unlink(missing_ok=True)
+            await run_in_threadpool(FileService.delete_file, stored_filename)
             raise
 
         # 5. Return API response

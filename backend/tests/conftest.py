@@ -19,6 +19,8 @@ from app.models import agent_run, audit_log, battlecard, evidence, run_evidence,
 
 @pytest.fixture
 def upload_dir(tmp_path, monkeypatch):
+    monkeypatch.delenv("BLOB_STORE_ID", raising=False)
+    monkeypatch.delenv("BLOB_READ_WRITE_TOKEN", raising=False)
     directory = tmp_path / "uploads"
     monkeypatch.setattr(settings, "UPLOAD_DIR", str(directory))
     return directory
