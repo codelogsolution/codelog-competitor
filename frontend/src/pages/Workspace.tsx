@@ -352,7 +352,8 @@ export default function Workspace() {
     imports.error,
   ].filter(Boolean);
   const unavailable = errors.some((item) =>
-    item.includes("KOMP API is unavailable"),
+    item.includes("KOMP API is unavailable") ||
+    item.includes("server is temporarily unavailable"),
   );
   const isRefreshing = [
     evidence.refreshing,
@@ -398,7 +399,7 @@ export default function Workspace() {
       <ErrorMessage
         text={
           unavailable
-            ? "KOMP API is not connected. Start the backend service, then refresh this page."
+            ? "The server is temporarily unavailable. Please try again in a moment."
             : errors.join(" · ")
         }
       />

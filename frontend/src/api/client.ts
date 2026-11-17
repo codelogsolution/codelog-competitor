@@ -1,5 +1,6 @@
 const DEFAULT_API_BASE_URL = import.meta.env.DEV ? "http://127.0.0.1:8000/api/v1" : "/api/v1";
 export const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || DEFAULT_API_BASE_URL).replace(/\/$/, "");
+const SERVER_UNAVAILABLE_MESSAGE = "The server is temporarily unavailable. Please try again in a moment.";
 
 type RequestOptions = RequestInit & { params?: Record<string, string | number | undefined> };
 
@@ -33,6 +34,8 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   }
 
   if (!response.ok) {
+    if (response.status >= 500) throw new Error(SERVER_UNAVAILABLE_MESSAGE);
+
     let message = `${response.status} ${response.statusText}`;
     try {
       const body: unknown = await response.json();
@@ -78,6 +81,8 @@ export async function apiStreamPost<T, E extends { type?: string; result?: T; me
   }
 
   if (!response.ok) {
+    if (response.status >= 500) throw new Error(SERVER_UNAVAILABLE_MESSAGE);
+
     let message = `${response.status} ${response.statusText}`;
     try {
       const payload = await response.json() as { detail?: unknown; message?: string };

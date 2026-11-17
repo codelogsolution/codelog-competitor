@@ -28,12 +28,14 @@ jobs:
       - name: Apply database migrations
         working-directory: backend
         env:
+          APP_ENV: testing
           DATABASE_URL: sqlite:////tmp/komp-ci.db
         run: alembic -c alembic.ini upgrade head
 
       - name: Run backend tests
         working-directory: backend
         env:
+          APP_ENV: testing
           DATABASE_URL: sqlite:////tmp/komp-ci.db
         run: PYTHONPATH=. pytest -q
 
