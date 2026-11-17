@@ -1,4 +1,5 @@
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000/api/v1").replace(/\/$/, "");
+const DEFAULT_API_BASE_URL = import.meta.env.DEV ? "http://127.0.0.1:8000/api/v1" : "/api/v1";
+export const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || DEFAULT_API_BASE_URL).replace(/\/$/, "");
 
 type RequestOptions = RequestInit & { params?: Record<string, string | number | undefined> };
 
@@ -9,10 +10,6 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
     if (value !== undefined && value !== "") url.searchParams.set(key, String(value));
   });
 
-  // A crashed Uvicorn reload worker can leave its parent socket open without
-  // responding. Bound normal API calls so page-level loading states can fail
-  // visibly instead of spinning forever. Streaming agent runs use a separate
-  // client below and are intentionally not subject to this request timeout.
   const timeoutMs = init.body instanceof FormData ? 120_000 : init.method === "GET" || !init.method ? 12_000 : 30_000;
   const controller = new AbortController();
   const timeout = window.setTimeout(() => controller.abort(), timeoutMs);
